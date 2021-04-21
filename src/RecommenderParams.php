@@ -58,7 +58,7 @@ class RecommenderParams
 	/**
 	 * @var string
 	 */
-	public $context;
+//	public $context;
 
 	/**
 	 * @var int

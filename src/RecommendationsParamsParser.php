@@ -4,11 +4,7 @@ namespace SchemaTreeSuggester;
 
 use InvalidArgumentException;
 
-/**
- * TODO:
- * implement the class to parse and check the validity of
- * the parameters passed to the URL
-**/
+
 class RecommendationsParamsParser {
 
 	/**
@@ -63,7 +59,7 @@ class RecommendationsParamsParser {
 		}
 
 		$result->language = $params['language'];
-		$result->context = $params['context'];
+//		$result->context = $params['context'];
 
 		if ( $result->search ) {
 			// the results matching '$search' can be at the bottom of the list

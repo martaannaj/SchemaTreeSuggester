@@ -9,14 +9,7 @@ use Wikibase\DataModel\Entity\PropertyId;
 use Wikibase\DataModel\Services\Lookup\EntityLookup;
 use Wikibase\Repo\Api\EntitySearchHelper;
 
-/** TODO:
- * This class will make the curl call to the /lean-recommender
- * To get the properties + their probabilities
- * There should be the following:
- * main function to make the curl call
- * a function to filter the suggestions based on search value
- * probably a later TODO is to scale for languages in this function
- **/
+
 class RecommendationGenerator {
 
 	/**
@@ -40,14 +33,14 @@ class RecommendationGenerator {
 
 	public function generateSuggestionsByPropertyList(
 		$properties,
-//		$types,
+		$types,
 		$suggesterLimit, // add that the schema tree recommender takes this as a parameter (?)
 		$minProbability
 	): array
 	{
 		return $this->generateRecommendations(
 			$properties,
-//			$types,
+			$types,
 			$suggesterLimit,
 			$minProbability
 		);
@@ -79,16 +72,49 @@ class RecommendationGenerator {
 
 		return $this->generateRecommendations(
 			$properties,
-//			$types,
+			$types,
 			$suggesterLimit,
 			$minProbability
 		);
 	}
 
+	public function filterSuggestions( array $suggestions, $search, $language, $resultSize ) {
+		if ( !$search ) {
+			return array_slice( $suggestions, 0, $resultSize );
+		}
+
+		$searchResults = $this->entityTermSearchHelper->getRankedSearchResults(
+			$search,
+			$language,
+			'property',
+			$resultSize,
+			true
+		);
+
+		$id_set = [];
+		foreach ( $searchResults as $searchResult ) {
+			// @phan-suppress-next-next-line PhanUndeclaredMethod getEntityId() returns PropertyId
+			// as requested above and that implements getNumericId()
+			$id_set[$searchResult->getEntityId()->getNumericId()] = true;
+		}
+
+		$matching_suggestions = [];
+		$count = 0;
+		foreach ( $suggestions as $suggestion ) {
+			if ( array_key_exists( $suggestion->getPropertyId()->getNumericId(), $id_set ) ) {
+				$matching_suggestions[] = $suggestion;
+				if ( ++$count === $resultSize ) {
+					break;
+				}
+			}
+		}
+		return $matching_suggestions;
+	}
+
 	// TODO: maybe put this in a separate class (the same as the Property suggester)
 	private function generateRecommendations(
 		$properties,
-//		$types,
+		$types,
 		$suggesterLimit, // add that the schema tree recommender takes this as a parameter (?)
 		$minProbability
 	): array
@@ -98,7 +124,7 @@ class RecommendationGenerator {
 		$url = "http://localhost:9090/lean-recommender";
 		$data_array =  array(
 			"Properties" => $properties,
-			"Types" => array()
+			"Types" => $types
 		);
 		curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data_array));
 		curl_setopt($curl, CURLOPT_URL, $url);
@@ -113,14 +139,16 @@ class RecommendationGenerator {
 		curl_close($curl);
 
 		$result = json_decode( $result, true )['recommendations'];
-		$recommendations = array();
-		foreach($result as $res) {
-			if ($res['probability'] >= $minProbability) {
-				array_push($recommendations, $res);
+		$resultArray = [];
+		foreach ( $result as $res) {
+			if(strpos($res["property"], "/prop/direct/")) {
+				$id = explode("/", $res["property"]);
+				$pid = PropertyId::newFromNumber((int)substr($id[count($id) - 1], 1));
+				$suggestion = new Suggestion($pid, $res["probability"]);
+				$resultArray[] = $suggestion;
 			}
 		}
-
-		return $recommendations;
+		return $resultArray;
 	}
 
 }

@@ -108,7 +108,6 @@ class GetRecommendations extends ApiBase {
 		// get the parameters passed in the url
 		$extracted = $this->extractRequestParams();
 		try {
-			echo json_encode($extracted);
 			$params = $this->paramsParser->parseAndValidate( $extracted );
 		} catch ( InvalidArgumentException $ex ) {
 			$this->dieWithException( $ex );
@@ -120,14 +119,12 @@ class GetRecommendations extends ApiBase {
 		);
 
 		if ( $params->properties !== null) {
-			echo $params->properties;
 			$suggestions = $recommendationGenerator->generateSuggestionsByPropertyList(
 				$params->properties,
 				$params->types,
 				$params->suggesterLimit,
 				$params->minProbability
 			);
-			echo $suggestions;
 		} else {
 			$suggestions = $recommendationGenerator->generateSuggestionsByItemId(
 				$params->entity,
@@ -136,106 +133,49 @@ class GetRecommendations extends ApiBase {
 			);
 		}
 
+		$suggestions = $recommendationGenerator->filterSuggestions(
+		// @phan-suppress-next-line PhanTypeMismatchArgumentNullable T240141
+			$suggestions,
+			$params->search,
+			$params->language,
+			$params->resultSize
+		);
 
-		/**after here the $params variable holds the following items from the url request:
-		 * $params->entity: the Q code OR $params->properties: the P codes of the item
-		 * $params->suggesterLimit: the number of items to return,
-		 * $params->minProbability: the minimum probability the recommendations can have,
-		 * $params->context ? don't think that I need this,
-		**/
 
-//		ApiResult::setIndexedTagName( $result, 'search' );
-//		$this->getResult()->addValue( null, 'search', $result );
-//
-//		$this->getResult()->addValue( null, 'success', 1 );
-//		// if ( count( $entries ) >= $params->resultSize ) {
-//		// 	$this->getResult()->addValue( null, 'search-continue', $params->resultSize );
-//		// }
-//		$this->getResult()->addValue( 'searchinfo', 'search', $params->search );
-//		$extracted = $this->extractRequestParams();
-//		try {
-//			$params = $this->paramsParser->parseAndValidate( $extracted );
-//		} catch ( InvalidArgumentException $ex ) {
-//			$this->dieWithException( $ex );
-//		}
+		$resultBuilder = new ResultBuilder(
+			$this->getResult(),
+			$this->prefetchingTermLookup,
+			$this->languageFallbackChainFactory,
+			$this->entityTitleLookup,
+			$params->search
+		);
 
-		// $suggestionGenerator = new SuggestionGenerator(
-		// 	$this->entityLookup,
-		// 	$this->entitySearchHelper,
-		// 	$this->suggester
-		// );
+		$entries = $resultBuilder->createResultArray( $suggestions, $params->language );
 
-		// $suggest = SuggesterEngine::SUGGEST_NEW;
-		// if ( $params->include === 'all' ) {
-		// 	$suggest = SuggesterEngine::SUGGEST_ALL;
-		// }
-		// if ( $params->entity !== null ) {
-		// 	try {
-		// 		$suggestions = $suggestionGenerator->generateSuggestionsByItem(
-		// 			$params->entity,
-		// 			$params->suggesterLimit,
-		// 			$params->minProbability,
-		// 			$params->context,
-		// 			$suggest
-		// 		);
-		// 	} catch ( RevisionedUnresolvedRedirectException $ex ) {
-		// 		$this->errorReporter->dieException( $ex, 'unresolved-redirect' );
-		// 	} catch ( InvalidArgumentException $ex ) {
-		// 		$this->dieWithException( $ex );
-		// 	}
-		// } else {
-		// 	$suggestions = $suggestionGenerator->generateSuggestionsByPropertyList(
-		// 		$params->properties,
-		// 		$params->suggesterLimit,
-		// 		$params->minProbability,
-		// 		$params->context,
-		// 		$suggest
-		// 	);
-		// }
+		// merge with search result if possible and necessary
+		if ( count( $entries ) < $params->resultSize && $params->search !== '' ) {
+			$searchResult = $this->querySearchApi(
+				$params->resultSize,
+				$params->search,
+				$params->language
+			);
+			$entries = $resultBuilder->mergeWithTraditionalSearchResults(
+				$entries,
+				$searchResult,
+				$params->resultSize
+			);
+		}
 
-		// $suggestions = $suggestionGenerator->filterSuggestions(
-		// 	// @phan-suppress-next-line PhanTypeMismatchArgumentNullable T240141
-		// 	$suggestions,
-		// 	$params->search,
-		// 	$params->language,
-		// 	$params->resultSize
-		// );
+		// Define Result
+		$slicedEntries = array_slice( $entries, $params->continue, $params->limit );
+		ApiResult::setIndexedTagName( $slicedEntries, 'search' );
+		$this->getResult()->addValue( null, 'search', $slicedEntries );
 
-		// // Build result array
-		// $resultBuilder = new ResultBuilder(
-		// 	$this->getResult(),
-		// 	$this->prefetchingTermLookup,
-		// 	$this->languageFallbackChainFactory,
-		// 	$this->entityTitleLookup,
-		// 	$params->search
-		// );
-
-		// $entries = $resultBuilder->createResultArray( $suggestions, $params->language );
-
-		// // merge with search result if possible and necessary
-		// if ( count( $entries ) < $params->resultSize && $params->search !== '' ) {
-		// 	$searchResult = $this->querySearchApi(
-		// 		$params->resultSize,
-		// 		$params->search,
-		// 		$params->language
-		// 	);
-		// 	$entries = $resultBuilder->mergeWithTraditionalSearchResults(
-		// 		$entries,
-		// 		$searchResult,
-		// 		$params->resultSize
-		// 	);
-		// }
-
-		// // Define Result
-		// $slicedEntries = array_slice( $entries, $params->continue, $params->limit );
-		// ApiResult::setIndexedTagName( $slicedEntries, 'search' );
-		// $this->getResult()->addValue( null, 'search', $slicedEntries );
-
-		// $this->getResult()->addValue( null, 'success', 1 );
-		// if ( count( $entries ) >= $params->resultSize ) {
-		// 	$this->getResult()->addValue( null, 'search-continue', $params->resultSize );
-		// }
-		// $this->getResult()->addValue( 'searchinfo', 'search', $params->search );
+		$this->getResult()->addValue( null, 'success', 1 );
+		if ( count( $entries ) >= $params->resultSize ) {
+			$this->getResult()->addValue( null, 'search-continue', $params->resultSize );
+		}
+		$this->getResult()->addValue( 'searchinfo', 'search', $params->search );
 	}
 
 	/**
@@ -301,10 +241,10 @@ class GetRecommendations extends ApiBase {
 				ApiBase::PARAM_TYPE => $this->languageCodes,
 				ApiBase::PARAM_DFLT => $this->getContext()->getLanguage()->getCode(),
 			],
-			'context' => [
-				ApiBase::PARAM_TYPE => [ 'item', 'qualifier', 'reference' ],
-				ApiBase::PARAM_DFLT => 'item',
-			],
+//			'context' => [
+//				ApiBase::PARAM_TYPE => [ 'item', 'qualifier', 'reference' ],
+//				ApiBase::PARAM_DFLT => 'item',
+//			],
 			'include' => [
 				ApiBase::PARAM_TYPE => [ '', 'all' ],
 				ApiBase::PARAM_DFLT => '',
@@ -316,22 +256,22 @@ class GetRecommendations extends ApiBase {
 		];
 	}
 
-	/**
-	 * @inheritDoc
-	 */
-	public function getExamplesMessages() {
-		return [
-			'action=wbsgetsuggestions&entity=Q4'
-			=> 'apihelp-wbsgetsuggestions-example-1',
-			'action=wbsgetsuggestions&entity=Q4&continue=10&limit=5'
-			=> 'apihelp-wbsgetsuggestions-example-2',
-			'action=wbsgetsuggestions&properties=P31|P21'
-			=> 'apihelp-wbsgetsuggestions-example-3',
-			'action=wbsgetsuggestions&properties=P21&context=qualifier'
-			=> 'apihelp-wbsgetsuggestions-example-4',
-			'action=wbsgetsuggestions&properties=P21&context=reference'
-			=> 'apihelp-wbsgetsuggestions-example-5'
-		];
-	}
+//	/**
+//	 * @inheritDoc
+//	 */
+//	public function getExamplesMessages() {
+//		return [
+//			'action=wbsgetsuggestions&entity=Q4'
+//			=> 'apihelp-wbsgetsuggestions-example-1',
+//			'action=wbsgetsuggestions&entity=Q4&continue=10&limit=5'
+//			=> 'apihelp-wbsgetsuggestions-example-2',
+//			'action=wbsgetsuggestions&properties=P31|P21'
+//			=> 'apihelp-wbsgetsuggestions-example-3',
+//			'action=wbsgetsuggestions&properties=P21&context=qualifier'
+//			=> 'apihelp-wbsgetsuggestions-example-4',
+//			'action=wbsgetsuggestions&properties=P21&context=reference'
+//			=> 'apihelp-wbsgetsuggestions-example-5'
+//		];
+//	}
 
 }
