@@ -1,0 +1,24 @@
+{
+	"@metadata": {
+		"authors": [
+			"Christian Dullweber",
+			"Katie Filbert"
+		]
+	},
+	"apihelp-wbsgetschemarecommendation-description": "API module for getting suggestions of additional properties to add to a Wikibase entity. The API module is primarily intended for use by the suggester widget when users are editing Wikibase entities.",
+	"apihelp-wbsgetschemarecommendation-summary": "API module for getting suggestions of additional properties to add to a Wikibase entity. The API module is primarily intended for use by the suggester widget when users are editing Wikibase entities.",
+	"apihelp-wbsgetschemarecommendation-example-1": "Get suggestions for entity Q4",
+	"apihelp-wbsgetschemarecommendation-example-2": "Get suggestions for entity Q4 from rank 10 to 15",
+	"apihelp-wbsgetschemarecommendation-example-3": "Get suggestions for the property combination P21 and P31",
+	"apihelp-wbsgetschemarecommendation-example-4": "Get suggestions for the qualifiers that are used with P21",
+	"apihelp-wbsgetschemarecommendation-example-5": "Get suggestions for the references that are used with P21",
+	"apihelp-wbsgetschemarecommendation-param-context": "Either item, reference or qualifier.",
+	"apihelp-wbsgetschemarecommendation-param-continue": "Offset where to continue a search.",
+	"apihelp-wbsgetschemarecommendation-param-entity": "Suggest properties for the given entity, based on existing list of properties that the entity has.",
+	"apihelp-wbsgetschemarecommendation-param-include": "Which suggestions to include: Per default only properties that might be added (non-deprecated, not yet present) will be suggested.",
+	"apihelp-wbsgetschemarecommendation-param-language": "Language for result.",
+	"apihelp-wbsgetschemarecommendation-param-limit": "Maximum number of results.",
+	"apihelp-wbsgetschemarecommendation-param-properties": "Suggest additional properties for the given list of properties.",
+	"apihelp-wbsgetschemarecommendation-param-search": "Search for this text.",
+	"apihelp-wbsgetschemarecommendation-param-size": "Specify number of suggestions to be returned."
+}

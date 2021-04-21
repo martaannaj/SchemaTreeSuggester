@@ -1,0 +1,49 @@
+{
+	"name": "SchemaTreeSuggester",
+	"version": "0.0.0",
+	"author": [
+		"Marta Anna Jansone"
+	],
+	"url": "",
+	"descriptionmsg": "schematreesuggester-desc",
+	"license-name": "GPL-2.0-or-later",
+	"type": "wikibase",
+	"requires": {
+		"MediaWiki": ">= 1.31.0"
+	},
+	"AutoloadNamespaces": {
+		"SchemaTreeSuggester\\": "src/"
+	},
+	"APIModules": {
+		"wbsgetrecommendations": "SchemaTreeSuggester\\GetRecommendations"
+	},
+	"MessagesDirs": {
+		"SchemaTreeSuggester": [
+			"i18n",
+			"i18n/api"
+		]
+	},
+	"ExtensionMessagesFiles": {
+		"SchemaTreeSuggesterAlias": "SchemaTreeSuggester.alias.php"
+	},
+	"ResourceFileModulePaths": {
+		"localBasePath": "",
+		"remoteExtPath": "SchemaTreeSuggester"
+	},
+	"config": {
+		"SchemaTreeSuggesterDeprecatedIds": {
+			"value": []
+		},
+		"SchemaTreeSuggesterClassifyingPropertyIds": {
+			"value": []
+		},
+		"SchemaTreeSuggesterInitialSuggestions": {
+			"value": []
+		},
+		"SchemaTreeSuggesterMinProbability": {
+			"value": 0.05
+		}
+	},
+	"load_composer_autoloader": true,
+	"manifest_version": 2
+}

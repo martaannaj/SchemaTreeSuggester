@@ -1,0 +1,9 @@
+{
+	"@metadata": {
+		"authors": [
+			"Christian Dullweber",
+			"Katie Filbert"
+		]
+	},
+	"schematreerecommender-desc": "Suggests properties when adding Wikibase statements."
+}
