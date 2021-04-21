@@ -6,7 +6,7 @@ namespace SchemaTreeSuggester;
 /**
  * Stores the suggester params
  */
-class RecommenderParams
+class SuggesterParams
 {
 
 	/**
@@ -58,7 +58,7 @@ class RecommenderParams
 	/**
 	 * @var string
 	 */
-//	public $context;
+	public $context;
 
 	/**
 	 * @var int

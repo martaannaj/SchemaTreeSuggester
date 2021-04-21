@@ -1,7 +1,7 @@
 <?php
 
 
-namespace SchemaTreeSuggester;
+namespace SchemaTreeSuggester\Suggesters;
 
 use Wikibase\DataModel\Entity\PropertyId;
 

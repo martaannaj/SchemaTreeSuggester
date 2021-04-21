@@ -15,7 +15,7 @@
 		"SchemaTreeSuggester\\": "src/"
 	},
 	"APIModules": {
-		"wbsgetrecommendations": "SchemaTreeSuggester\\GetRecommendations"
+		"wbsgetrecommendations": "SchemaTreeSuggester\\GetSuggestions"
 	},
 	"MessagesDirs": {
 		"SchemaTreeSuggester": [
@@ -31,17 +31,20 @@
 		"remoteExtPath": "SchemaTreeSuggester"
 	},
 	"config": {
-		"SchemaTreeSuggesterDeprecatedIds": {
+		"TreeSuggesterDeprecatedIds": {
 			"value": []
 		},
-		"SchemaTreeSuggesterClassifyingPropertyIds": {
+		"TreeSuggesterClassifyingPropertyIds": {
+			"value": [31]
+		},
+		"TreeSuggesterInitialSuggestions": {
 			"value": []
 		},
-		"SchemaTreeSuggesterInitialSuggestions": {
-			"value": []
-		},
-		"SchemaTreeSuggesterMinProbability": {
+		"TreeSuggesterMinProbability": {
 			"value": 0.05
+		},
+		"TreeSuggesterRecommenderUrl": {
+			"value": "http://localhost:9090/lean-recommender"
 		}
 	},
 	"load_composer_autoloader": true,

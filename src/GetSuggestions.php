@@ -8,11 +8,13 @@ use ApiResult;
 use DerivativeRequest;
 use InvalidArgumentException;
 use MediaWiki\MediaWikiServices;
+use SchemaTreeSuggester\Suggesters\SimpleSuggester;
 use Wikibase\DataAccess\PrefetchingTermLookup;
 use Wikibase\DataModel\Entity\Property;
 use Wikibase\DataModel\Services\Lookup\EntityLookup;
 use Wikibase\Lib\LanguageFallbackChainFactory;
 use Wikibase\Lib\Store\EntityTitleLookup;
+use Wikibase\Lib\Store\RevisionedUnresolvedRedirectException;
 use Wikibase\Repo\Api\ApiErrorReporter;
 use Wikibase\Repo\Api\EntitySearchHelper;
 use Wikibase\Repo\Api\TypeDispatchingEntitySearchHelper;
@@ -24,7 +26,7 @@ use Wikibase\Repo\WikibaseRepo;
  * @author BP2013N2
  * @license GPL-2.0-or-later
  */
-class GetRecommendations extends ApiBase {
+class GetSuggestions extends ApiBase {
 
 	/**
 	 * @var EntityLookup
@@ -42,7 +44,7 @@ class GetRecommendations extends ApiBase {
 	private $languageCodes;
 
 	/**
-	 * @var RecommendationsParamsParser
+	 * @var SuggesterParamsParser
 	 */
 	private $paramsParser;
 
@@ -67,15 +69,22 @@ class GetRecommendations extends ApiBase {
 	private $languageFallbackChainFactory;
 
 	/**
+	 * @var SimpleSuggester
+	 */
+	private $suggester;
+
+	/**
 	 * @param ApiMain $main
 	 * @param string $name
 	 * @param string $prefix
 	 */
 	public function __construct( ApiMain $main, $name, $prefix = '' ) {
 		parent::__construct( $main, $name, $prefix );
-		global $wgRecommenderMinProbability;
-		global $wgRecommenderClassifyingPropertyIds;
-		global $wgRecommenderInitialSuggestions;
+		global $wgTreeSuggesterDeprecatedIds;
+		global $wgTreeSuggesterMinProbability;
+		global $wgTreeSuggesterClassifyingPropertyIds;
+		global $wgTreeSuggesterInitialSuggestions;
+		global $wgTreeSuggesterRecommenderUrl;
 
 		$mwServices = MediaWikiServices::getInstance();
 		$wikibaseRepo = WikibaseRepo::getDefaultInstance();
@@ -97,8 +106,13 @@ class GetRecommendations extends ApiBase {
 		$this->entityTitleLookup = WikibaseRepo::getEntityTitleLookup( $mwServices );
 		$this->languageCodes = WikibaseRepo::getTermsLanguages( $mwServices )->getLanguages();
 
+		$this->suggester = new SimpleSuggester($wgTreeSuggesterRecommenderUrl);
+		$this->suggester->setDeprecatedPropertyIds( $wgTreeSuggesterDeprecatedIds );
+		$this->suggester->setClassifyingPropertyIds( $wgTreeSuggesterClassifyingPropertyIds );
+		$this->suggester->setInitialSuggestions( $wgTreeSuggesterInitialSuggestions );
+
 		// initialise the parameter parser
-		$this->paramsParser = new RecommendationsParamsParser(500, 0.05);
+		$this->paramsParser = new SuggesterParamsParser(500, $wgTreeSuggesterMinProbability);
 	}
 
 	/**
@@ -113,27 +127,36 @@ class GetRecommendations extends ApiBase {
 			$this->dieWithException( $ex );
 		}
 
-		$recommendationGenerator = new RecommendationGenerator(
+		$suggestionGenerator = new SuggestionGenerator(
 			$this->entityLookup,
-			$this->entitySearchHelper
+			$this->entitySearchHelper,
+			$this->suggester
 		);
 
-		if ( $params->properties !== null) {
-			$suggestions = $recommendationGenerator->generateSuggestionsByPropertyList(
+		if ( $params->entity !== null) {
+			try {
+				$suggestions = $suggestionGenerator->generateSuggestionsByItem(
+					$params->entity,
+					$params->suggesterLimit,
+					$params->minProbability,
+					$params->context
+				);
+			} catch ( RevisionedUnresolvedRedirectException $ex ) {
+				$this->errorReporter->dieException( $ex, 'unresolved-redirect' );
+			} catch ( InvalidArgumentException $ex ) {
+				$this->dieWithException( $ex );
+			}
+		} else {
+			$suggestions = $suggestionGenerator->generateSuggestionsByPropertyList(
 				$params->properties,
 				$params->types,
 				$params->suggesterLimit,
-				$params->minProbability
-			);
-		} else {
-			$suggestions = $recommendationGenerator->generateSuggestionsByItemId(
-				$params->entity,
-				$params->suggesterLimit,
-				$params->minProbability
+				$params->minProbability,
+				$params->context
 			);
 		}
 
-		$suggestions = $recommendationGenerator->filterSuggestions(
+		$suggestions = $suggestionGenerator->filterSuggestions(
 		// @phan-suppress-next-line PhanTypeMismatchArgumentNullable T240141
 			$suggestions,
 			$params->search,
@@ -241,10 +264,10 @@ class GetRecommendations extends ApiBase {
 				ApiBase::PARAM_TYPE => $this->languageCodes,
 				ApiBase::PARAM_DFLT => $this->getContext()->getLanguage()->getCode(),
 			],
-//			'context' => [
-//				ApiBase::PARAM_TYPE => [ 'item', 'qualifier', 'reference' ],
-//				ApiBase::PARAM_DFLT => 'item',
-//			],
+			'context' => [
+				ApiBase::PARAM_TYPE => [ 'item', 'qualifier', 'reference' ],
+				ApiBase::PARAM_DFLT => 'item',
+			],
 			'include' => [
 				ApiBase::PARAM_TYPE => [ '', 'all' ],
 				ApiBase::PARAM_DFLT => '',

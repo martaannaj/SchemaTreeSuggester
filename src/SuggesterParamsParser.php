@@ -5,7 +5,7 @@ namespace SchemaTreeSuggester;
 use InvalidArgumentException;
 
 
-class RecommendationsParamsParser {
+class SuggesterParamsParser {
 
 	/**
 	 * @var int
@@ -24,11 +24,11 @@ class RecommendationsParamsParser {
 	/**
 	 * parses and validates the parameters of GetSuggestion
 	 * @param array $params
-	 * @throws InvalidArgumentException
-	 * @return RecommenderParams
+	 * @return SuggesterParams
+	 *@throws InvalidArgumentException
 	 */
 	public function parseAndValidate( array $params ) {
-		$result = new RecommenderParams();
+		$result = new SuggesterParams();
 
 		$result->entity = $params['entity'];
 		$result->properties = $params['properties'];
@@ -59,7 +59,7 @@ class RecommendationsParamsParser {
 		}
 
 		$result->language = $params['language'];
-//		$result->context = $params['context'];
+		$result->context = $params['context'];
 
 		if ( $result->search ) {
 			// the results matching '$search' can be at the bottom of the list

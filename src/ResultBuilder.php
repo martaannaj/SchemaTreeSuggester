@@ -3,6 +3,7 @@
 namespace SchemaTreeSuggester;
 
 use ApiResult;
+use SchemaTreeSuggester\Suggesters\Suggestion;
 use Wikibase\DataAccess\PrefetchingTermLookup;
 use Wikibase\Lib\LanguageFallbackChainFactory;
 use Wikibase\Lib\Store\EntityTitleLookup;
