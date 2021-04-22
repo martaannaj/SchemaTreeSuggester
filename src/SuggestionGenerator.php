@@ -45,16 +45,17 @@ class SuggestionGenerator {
 		$context
 	) : array
 	{
-		$itemId = new ItemId( $itemIdString );
-		/** @var Item $item */
-		$item = $this->entityLookup->getEntity( $itemId );
-
-		if ( $item === null ) {
-			throw new InvalidArgumentException( 'Item ' . $itemIdString . ' could not be found' );
-		}
+//		$itemId = new ItemId( $itemIdString );
+//		/** @var Item $item */
+//		$item = $this->entityLookup->getEntity( $itemId );
+//
+//		if ( $item === null ) {
+//			throw new InvalidArgumentException( 'Item ' . $itemIdString . ' could not be found' );
+//		}
 
 		return $this->suggester->suggestByItem(
-			$item,
+			$itemIdString,
+			$this->entityLookup,
 			$limit,
 			$minProbability,
 			$context

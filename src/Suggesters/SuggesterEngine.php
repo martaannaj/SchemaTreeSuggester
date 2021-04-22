@@ -5,6 +5,7 @@ namespace SchemaTreeSuggester\Suggesters;
 
 use Wikibase\DataModel\Entity\Item;
 use Wikibase\DataModel\Entity\PropertyId;
+use Wikibase\DataModel\Services\Lookup\EntityLookup;
 
 /**
  * interface for (Property-)Suggester
@@ -36,15 +37,15 @@ interface SuggesterEngine
 	/**
 	 * Returns suggested attributes
 	 *
-	 * @param Item $item
+	 * @param string $itemIdString
+	 * @param EntityLookup $entityLookup
 	 * @param int $limit
 	 * @param float $minProbability
 	 * @param string $context
-	 * @param string $include One of the self::SUGGEST_* constants
 	 * @return Suggestion[]
 	 */
 	public function suggestByItem(
-		Item $item, $limit, $minProbability, $context
+		$itemIdString, $entityLookup, $limit, $minProbability, $context
 	);
 
 }

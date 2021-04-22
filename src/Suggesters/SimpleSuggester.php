@@ -9,6 +9,7 @@ use Wikibase\DataModel\Entity\Item;
 use Wikibase\DataModel\Entity\ItemId;
 use Wikibase\DataModel\Entity\PropertyId;
 use Wikibase\DataModel\Snak\PropertyValueSnak;
+use Wikimedia\Rdbms\ILoadBalancer;
 use Wikimedia\Rdbms\IResultWrapper;
 
 /**
@@ -40,8 +41,14 @@ class SimpleSuggester implements SuggesterEngine {
 	 */
 	private $recommenderUrl;
 
-	public function __construct(string $url) {
+	/**
+	 * @var ILoadBalancer
+	 */
+	private $lb;
+
+	public function __construct(string $url, ILoadBalancer $lb) {
 		$this->recommenderUrl = $url;
+		$this->lb = $lb;
 	}
 
 	/**
@@ -99,12 +106,15 @@ class SimpleSuggester implements SuggesterEngine {
 
 		$properties = [];
 		foreach($propertyIds as $id) {
-			$properties[] = "http://www.wikidata.org/prop/direct/" . $id; //TODO: probably also a config parameter
+			$properties[] = "http://www.wikidata.org/prop/direct/" . $this->getOriginalID($id); //TODO: probably also a config parameter
 		}
 
-		$types= [];
-		foreach($typesIds as $id) {
-			$types[] = "http://www.wikidata.org/entity/" . $id; //TODO: probably also a config parameter
+
+		$types = [];
+		if ($typesIds !== null) {
+			foreach ($typesIds as $id) {
+				$types[] = "http://www.wikidata.org/entity/" . $this->getOriginalID($id); //TODO: probably also a config parameter
+			}
 		}
 
 		$curl = curl_init();
@@ -129,6 +139,44 @@ class SimpleSuggester implements SuggesterEngine {
 		$result = json_decode( $result, true )['recommendations'];
 
 		return $this->buildResult( $result );
+	}
+
+	private function getOriginalID($id){
+		$dbr = $this->lb->getConnection( DB_REPLICA );
+		$res = $dbr->select(
+			'wbs_entity_mapping',
+			[
+				'id' => 'wbs_original_id'
+			],
+			['wbs_local_id' => $id],
+			__METHOD__
+		);
+
+		$this->lb->reuseConnection( $dbr );
+		$results = [];
+		foreach($res as $re) {
+			$results[] = $re->id;
+		}
+		return $results[0];
+	}
+
+	private function getLocalId($id){
+		$dbr = $this->lb->getConnection( DB_REPLICA );
+		$res = $dbr->select(
+			'wbs_entity_mapping',
+			[
+				'id' => 'wbs_local_id'
+			],
+			['wbs_original_id' => $id],
+			__METHOD__
+		);
+
+		$this->lb->reuseConnection( $dbr );
+		$results = [];
+		foreach($res as $re) {
+			$results[] = $re->id;
+		}
+		return $results[0];
 	}
 
 	/**
@@ -157,21 +205,29 @@ class SimpleSuggester implements SuggesterEngine {
 	}
 
 	/**
-	 * @see SuggesterEngine::suggestByEntity
-	 *
-	 * @param Item $item
+	 * @param string $itemIdString
 	 * @param int $limit
 	 * @param float $minProbability
 	 * @param string $context
-	 * @throws LogicException
 	 * @return Suggestion[]
+	 *@throws LogicException
+	 * @see SuggesterEngine::suggestByEntity
+	 *
 	 */
 	public function suggestByItem(
-		Item $item,
+		$itemIdString,
+		$entityLookup,
 		$limit,
 		$minProbability,
 		$context
 	) {
+		$itemId = new ItemId( $this->getLocalId($itemIdString) );
+		/** @var Item $item */
+		$item = $entityLookup->getEntity( $itemId );
+
+		if ( $item === null ) {
+			throw new InvalidArgumentException( 'Item ' . $itemIdString . ' could not be found' );
+		}
 		$propertyIds = array();
 		$typesIds = array();
 		foreach ( $item->getStatements()->toArray() as $statement ) {
@@ -223,7 +279,8 @@ class SimpleSuggester implements SuggesterEngine {
 		foreach ( $result as $res) {
 			if(strpos($res["property"], "/prop/direct/")) {
 				$id = explode("/", $res["property"]);
-				$pid = PropertyId::newFromNumber((int)substr($id[count($id) - 1], 1));
+				$id = $this->getLocalId($id[count($id) - 1]);
+				$pid = PropertyId::newFromNumber((int)substr($id, 1));
 				$suggestion = new Suggestion($pid, $res["probability"]);
 				$resultArray[] = $suggestion;
 			}

@@ -89,6 +89,7 @@ class GetSuggestions extends ApiBase {
 		$mwServices = MediaWikiServices::getInstance();
 		$wikibaseRepo = WikibaseRepo::getDefaultInstance();
 		$store = WikibaseRepo::getStore( $mwServices );
+		$lb = $mwServices->getDBLoadBalancer();
 
 		$this->errorReporter = new ApiErrorReporter(
 			$this,
@@ -106,7 +107,7 @@ class GetSuggestions extends ApiBase {
 		$this->entityTitleLookup = WikibaseRepo::getEntityTitleLookup( $mwServices );
 		$this->languageCodes = WikibaseRepo::getTermsLanguages( $mwServices )->getLanguages();
 
-		$this->suggester = new SimpleSuggester($wgTreeSuggesterRecommenderUrl);
+		$this->suggester = new SimpleSuggester($wgTreeSuggesterRecommenderUrl, $lb);
 		$this->suggester->setDeprecatedPropertyIds( $wgTreeSuggesterDeprecatedIds );
 		$this->suggester->setClassifyingPropertyIds( $wgTreeSuggesterClassifyingPropertyIds );
 		$this->suggester->setInitialSuggestions( $wgTreeSuggesterInitialSuggestions );
